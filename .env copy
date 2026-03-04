@@ -8,7 +8,7 @@ DB_PORT=3306
 JWT_EXPIRES_IN =1d
 
 PORT=4000
-BASE_URL="http://127.0.0.1:4000"
+BASE_URL="http://10.0.80.41:4000"
 
 # Autres variables d'environnement
 NODE_ENV=development

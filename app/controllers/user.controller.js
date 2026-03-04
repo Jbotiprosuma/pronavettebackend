@@ -315,7 +315,7 @@ exports.updateUserPhoto = async (req, res) => {
         // Si un fichier est uploadé, utiliser son chemin
         if (req.file) {
             // Assure-toi que baseUrl correspond à la configuration de ton serveur de fichiers statiques
-            const baseUrl = `http://localhost:4000`;
+            const baseUrl = `http://10.0.80.41:4000`;
             newAvatarUrl = `${baseUrl}/avatars/${req.file.filename}`;
         } else if (req.body.reset_avatar === 'true') { // Permet de réinitialiser à l'avatar généré dynamiquement
             newAvatarUrl = null; // En mettant à null, le getter du modèle générera un avatar par défaut

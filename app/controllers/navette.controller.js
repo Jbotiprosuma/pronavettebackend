@@ -457,7 +457,7 @@ exports.createEmployerAb = async (req, res) => {
             return res.status(400).json({ message: 'Le type est obligatoire.' });
         }
         // Les chemins des fichiers uploadés par Multer se trouvent dans req.files
-        const imagePaths = req.files ? req.files.map(file => `http://127.0.0.1:4000/absences/${file.filename}`) : [];
+        const imagePaths = req.files ? req.files.map(file => `http://10.0.80.41:4000/absences/${file.filename}`) : [];
 
         const newAbsence = await db.EmployerAb.create({
             employer_id,
@@ -561,7 +561,7 @@ exports.updateEmployerAb = async (req, res) => {
             });
         }
 
-        const newImagePaths = req.files ? req.files.map(file => `http://127.0.0.1:4000/absences/${file.filename}`) : null;
+        const newImagePaths = req.files ? req.files.map(file => `http://10.0.80.41:4000/absences/${file.filename}`) : null;
 
         const updatedImages = [...imagesToKeepFromFrontend, ...newImagePaths];
 

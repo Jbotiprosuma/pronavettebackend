@@ -82,6 +82,6 @@ app.use('/api/activity-logs', activityLogRoutes);
 // Démarrage du serveur
 app.listen(port, () => {
   console.log(`Serveur PRONAVETTE démarré sur le port ${port}`);
-  console.log(`Accédez à l'API via : http://localhost:${port}`);
+  console.log(`Accédez à l'API via : http://10.0.80.41:${port}`);
   console.log(`Dossier statique servi depuis : ${path.join(__dirname, 'public')}`);
 });
