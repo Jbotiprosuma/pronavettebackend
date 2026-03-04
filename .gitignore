@@ -17,6 +17,4 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-/public/absences
-/public/avatars
-/public/employers
+/public
