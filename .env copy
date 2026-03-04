@@ -1,0 +1,29 @@
+DB_USERNAME=root
+DB_PASSWORD=
+DB_DATABASE=pronavette
+DB_HOST=127.0.0.1
+DB_DIALECT=mysql
+DB_PORT=3306
+
+JWT_EXPIRES_IN =1d
+
+PORT=4000
+BASE_URL="http://127.0.0.1:4000"
+
+# Autres variables d'environnement
+NODE_ENV=development
+JWT_SECRET=IAAFGBCDBCHUDCISIISCSI373EDBECEFDCDEDEZD
+
+# Active Directory
+AD_URL="ldap://prosuma.lan:389"
+AD_BASEDN="dc=prosuma,dc=lan"
+AD_USERNAME="appuser@prosuma.lan"
+AD_PASSWORD="Pr0sum@2025"
+
+# Mail
+MAIL_MAILER=smtp
+EMAIL_HOST="owa.prosuma.ci"
+EMAIL_PORT=25
+MAIL_ENCRYPTION=tls
+MAIL_FROM_NAME="PRONAVETTE"
+EMAIL_FROM ="pronavette@prosuma.ci"
