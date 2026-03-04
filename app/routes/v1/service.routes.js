@@ -6,7 +6,7 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 
 // 1. Lister tous les services
 // La route est maintenant relative à l'endroit où ce routeur sera 'monté' (ex: /api/services)
-router.get("/", authenticateToken, authorize(['system.config','user.manage']), controller.getAllServices);
+router.get("/", authenticateToken, controller.getAllServices);
 
 // 2. Créer un nouveau service
 // Mettre les routes spécifiques avant les routes avec des paramètres

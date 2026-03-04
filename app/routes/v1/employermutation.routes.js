@@ -10,7 +10,7 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 // et 'mutation.manage' permet de confirmer (validation finale).
 const PERM_READ = ['system.config', 'mutation.read'];
 const PERM_EDIT = ['system.config', 'mutation.edit'];
-const PERM_MANAGE = ['system.config', 'mutation.manage']; // Pour la validation/confirmation
+const PERM_MANAGE = ['system.config', 'mutation.manage']; 
 
 // --- Routes CRUD de base ---
 
@@ -18,7 +18,7 @@ const PERM_MANAGE = ['system.config', 'mutation.manage']; // Pour la validation/
 router.get("/export", authenticateToken, authorize(PERM_READ), controller.exportMutationsToExcel);
 
 // Liste des employés ayant une mutation "En attente"
-router.get("/pending-employer-ids", authenticateToken, authorize(PERM_READ), controller.getPendingEmployerIds);
+router.get("/pending-employer-ids", authenticateToken, controller.getPendingEmployerIds);
 
 // 1. Lister toutes les mutations
 // Seuls les utilisateurs ayant la permission de lire les mutations y ont accès.
