@@ -8,7 +8,7 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 router.get('/dashboard', authenticateToken, controller.getDashboard);
 
 // Statistiques détaillées (accessible à admin, superadmin, paie)
-const PERM_STATS = ['system.config', 'navette.manage'];
+const PERM_STATS = ['system.config', 'navette.manage', 'mutation.edit'];
 
 router.get('/absences', authenticateToken, authorize(PERM_STATS), controller.getAbsenceStats);
 router.get('/accomptes', authenticateToken, authorize(PERM_STATS), controller.getAccompteStats);

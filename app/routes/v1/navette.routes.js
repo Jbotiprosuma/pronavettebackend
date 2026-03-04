@@ -6,18 +6,18 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 const uploadAbsenceImages  = require('../../middlewares/uploadImages.middleware');
 
 // --- Routes existantes pour la gestion des navettes ---
-router.post("/", authenticateToken, authorize(['system.config','navette.manage']), controller.createNavette);
-router.get("/", authenticateToken, authorize(['system.config','navette.read']), controller.navettes);
-router.get("/historique", authenticateToken, authorize(['system.config','navette.read']), controller.navettesHistorique);
+router.post("/", authenticateToken, authorize(['system.config','navette.manage', 'mutation.edit']), controller.createNavette);
+router.get("/", authenticateToken, authorize(['system.config','navette.read', 'mutation.edit']), controller.navettes);
+router.get("/historique", authenticateToken, authorize(['system.config','navette.read', 'mutation.edit']), controller.navettesHistorique);
 router.get("/all", authenticateToken, controller.navetteAlls);
-router.get("/detail/:id", authenticateToken, authorize(['system.config','navette.read']), controller.getNavetteById);
+router.get("/detail/:id", authenticateToken, authorize(['system.config','navette.read', 'mutation.edit']), controller.getNavetteById);
 router.get("/service", authenticateToken, authorize(['system.config','navette.edit']), controller.getNavetteByServiceUser);
 
 router.put("/:id/validate-updates", authenticateToken, authorize(['system.config', 'navette.edit']), controller.validateUpdates); 
-router.put("/:id/correction", authenticateToken, authorize(['system.config', 'navette.manage']), controller.correction); 
-router.put("/:id/signaler", authenticateToken, authorize(['system.config', 'navette.manage']), controller.signaler); 
-router.put("/:id/send-to-payroll", authenticateToken, authorize(['system.config', 'navette.manage']), controller.sendToPayroll);    
-router.put("/:id/close", authenticateToken, authorize(['system.config', 'navette.read']), controller.closeNavette); 
+router.put("/:id/correction", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.correction); 
+router.put("/:id/signaler", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.signaler); 
+router.put("/:id/send-to-payroll", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.sendToPayroll);    
+router.put("/:id/close", authenticateToken, authorize(['system.config', 'navette.read', 'mutation.edit']), controller.closeNavette); 
 
 // --- Nouvelles routes pour EmployerAb (déjà présentes dans votre contrôleur) ---
 // Vous pourriez vouloir ajuster les permissions selon qui peut créer/modifier/supprimer des absences
@@ -51,10 +51,10 @@ router.post("/depart", authenticateToken, authorize(['system.config', 'navette.e
 router.delete("/depart/:id", authenticateToken, authorize(['system.config', 'navette.edit']), controller.departDelete);
 
 // --- Campagnes ---
-router.get("/campagnes", authenticateToken, authorize(['system.config', 'navette.manage']), controller.listCampagnes);
-router.put("/campagnes/prolonger", authenticateToken, authorize(['system.config', 'navette.manage']), controller.prolongerCampagne);
-router.put("/campagnes/dates", authenticateToken, authorize(['system.config', 'navette.manage']), controller.updateCampagneDates);
-router.delete("/campagnes", authenticateToken, authorize(['system.config', 'navette.manage']), controller.deleteCampagne);
+router.get("/campagnes", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.listCampagnes);
+router.put("/campagnes/prolonger", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.prolongerCampagne);
+router.put("/campagnes/dates", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.updateCampagneDates);
+router.delete("/campagnes", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit']), controller.deleteCampagne);
 
 // --- Template import employés (AVANT les routes avec :id) ---
 router.get("/template-employes", authenticateToken, controller.downloadEmployerTemplate);
