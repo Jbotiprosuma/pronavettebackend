@@ -8,9 +8,9 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 // --- Définitions des Permissions ---
 // J'assume que 'mutation.read' permet de voir, 'mutation.edit' permet de créer/modifier,
 // et 'mutation.manage' permet de confirmer (validation finale).
-const PERM_READ = ['system.config', 'mutation.read', 'mutation.edit'];
-const PERM_EDIT = ['system.config', 'mutation.edit'];
-const PERM_MANAGE = ['system.config', 'mutation.manage', 'mutation.edit']; // Pour la validation/confirmation
+const PERM_READ = ['system.config', 'mutation.read', 'mutation.edit','navette.edit'];
+const PERM_EDIT = ['system.config', 'mutation.edit','navette.edit'];
+const PERM_MANAGE = ['system.config', 'mutation.manage', 'mutation.edit','navette.edit']; // Pour la validation/confirmation
 
 // --- Routes CRUD de base ---
 
