@@ -6,13 +6,15 @@ module.exports = (sequelize, DataTypes) => {
     const CODE_ABSENCE = {
         ABSENCE_NON_REMUNEREE: "HA10",
         ACCIDENT_DE_TRAVAIL: "HA06",
-        ABSENCE_MISE_A_PIEDS: "HA??", 
+        ABSENCE_MISE_A_PIEDS: "HA10",
         ABSENCE_CONGES_DE_MATERNITE: "HA08",
         ABSENCE_CONGES_PAYE: "HC02",
         ABSENCE_REMUNEREE: "HC01",
         ABSENCE_PATERNITE: "HA09",
         ABSENCE_MALADIE: "HA05",
-        ABSENCE_FORMATION: "HA07"
+        ABSENCE_FORMATION: "HA07",
+        ABSENCE_CONGES_A_CALCULER: "HA03",
+        ABSENCE_CONGES_SUP_MATERNITE: "HA04"
     };
 
     class EmployerAb extends Model {
@@ -57,7 +59,9 @@ module.exports = (sequelize, DataTypes) => {
                 'ABSENCE_REMUNEREE',
                 'ABSENCE_PATERNITE',
                 'ABSENCE_MALADIE',
-                'ABSENCE_FORMATION'
+                'ABSENCE_FORMATION',
+                'ABSENCE_CONGES_A_CALCULER',
+                'ABSENCE_CONGES_SUP_MATERNITE'
             ),
             allowNull: false
         },

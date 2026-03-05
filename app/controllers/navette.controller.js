@@ -678,7 +678,7 @@ exports.deleteEmployerAb = async (req, res) => {
 
 exports.createEmployerAccompte = async (req, res) => {
     try {
-        const { employer_id, navette_id, navette_ligne_id, somme, motif } = req.body;
+        const { employer_id, navette_id, navette_ligne_id, somme, motif, code_accompte } = req.body;
 
         // Blocage mutation entrante en attente
         const mutBlock = await checkMutationInPending(navette_ligne_id);
@@ -690,6 +690,7 @@ exports.createEmployerAccompte = async (req, res) => {
             navette_ligne_id,
             somme,
             motif,
+            code_accompte: code_accompte || 'CL30',
             created_at: new Date(),
             updated_at: new Date(),
         });
@@ -726,7 +727,7 @@ exports.createEmployerAccompte = async (req, res) => {
 exports.updateEmployerAccompte = async (req, res) => {
     try {
         const { id } = req.params;
-        const { somme, motif } = req.body;
+        const { somme, motif, code_accompte } = req.body;
 
         const accompte = await db.EmployerAccompte.findByPk(id);
 
@@ -739,6 +740,7 @@ exports.updateEmployerAccompte = async (req, res) => {
         await accompte.update({
             somme,
             motif,
+            code_accompte: code_accompte || accompte.code_accompte,
             updated_at: new Date(),
         });
 
@@ -1709,13 +1711,15 @@ exports.exportSage = async (req, res) => {
         const CODE_ABSENCE = {
             ABSENCE_NON_REMUNEREE: "HA10",
             ACCIDENT_DE_TRAVAIL: "HA06",
-            ABSENCE_MISE_A_PIEDS: "HA??",
+            ABSENCE_MISE_A_PIEDS: "HA10",
             ABSENCE_CONGES_DE_MATERNITE: "HA08",
             ABSENCE_CONGES_PAYE: "HC02",
             ABSENCE_REMUNEREE: "HC01",
             ABSENCE_PATERNITE: "HA09",
             ABSENCE_MALADIE: "HA05",
-            ABSENCE_FORMATION: "HA07"
+            ABSENCE_FORMATION: "HA07",
+            ABSENCE_CONGES_A_CALCULER: "HA03",
+            ABSENCE_CONGES_SUP_MATERNITE: "HA04"
         };
 
         const PRIME_CODE_MAP = {
@@ -1730,7 +1734,27 @@ exports.exportSage = async (req, res) => {
             'PRIME DE FIN D ANNEE': 'CL20',
             'PRIME FIXE IMPOSABLE': 'CL26',
             'PRIME FIXE NON IMPOSABLE': 'CL21',
-            'PRIME DIVERS': 'CL10'
+            'PRIME DIVERS': 'CL10',
+            'PRIME SURSALAIRE': 'CL01',
+            'PRIME RAPPEL AUGMENTATION': 'CL02',
+            'PRIME SEMESTRIELLE': 'CL08',
+            'PRIME DE DEPART': 'CL16',
+            'PRIME FRAIS FUNERAIRES': 'CL17',
+            'PRIME ASTREINTE PROXIMITE': 'CL53',
+            'PRIME CAISSE PROXIMITE': 'CL54',
+            'PRIME JOUR SUPPLEMENTAIRE': 'CL64',
+            'PRIME VACCINATION': '3631',
+            'INDEMNITE PREAVIS': '1800',
+            'INDEMNITE AGGRAVATION': '1810',
+            'INDEMNITE LICENCIEMENT IMPOSABLE': '1900',
+            'INDEMNITE DECES IMPOSABLE': '1910',
+            'INDEMNITE RETRAITE IMPOSABLE': '1920',
+            'INDEMNITE DEPART CDD IMPOSABLE': '1980',
+            'INDEMNITE LICENCIEMENT NON IMPOSABLE': '3150',
+            'INDEMNITE DECES NON IMPOSABLE': '3152',
+            'INDEMNITE RETRAITE NON IMPOSABLE': '3154',
+            'INDEMNITE FIXE DEPART NON IMPOSABLE': '3160',
+            'INDEMNITE DEPART CDD NON IMPOSABLE': '3162'
         };
 
         // Parcourir les lignes navette triées par matricule
@@ -1814,7 +1838,7 @@ exports.exportSage = async (req, res) => {
                     ws.addRow({
                         matricule,
                         element: 255,
-                        code: pn.code_prime_nuit || 'PN01',
+                        code: pn.code_prime_nuit || 'CL12',
                         valeur: pn.nb_jour
                     });
                 }
