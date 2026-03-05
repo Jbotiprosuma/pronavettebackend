@@ -91,7 +91,9 @@ module.exports = (sequelize, DataTypes) => {
                                 navette_id: prime.navette_id,
                                 navette_ligne_id: prime.navette_ligne_id,
                                 code_prime_nuit: code,
-                                nb_jour: prime.nb_jour
+                                nb_jour: prime.nb_jour,
+                                created_at: new Date(),
+                                updated_at: new Date(),
                             }, { transaction: options.transaction });
                         }
                     }
