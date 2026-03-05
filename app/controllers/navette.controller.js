@@ -1138,6 +1138,7 @@ exports.validateUpdates = async (req, res) => {
 
         await navette.update({
             etat: "En attente de la confirmation des informations des employés par le manager",
+            last_update_by : req.user.id,
             date_envoie_manager: new Date()
         });
 
@@ -1224,6 +1225,7 @@ exports.correction = async (req, res) => {
 
         await navette.update({
             etat: "En attente de l'envoi des informations des employés au manager",
+            last_update_by : req.user.id,
             date_envoie_manager: null
         });
 
@@ -1313,6 +1315,7 @@ exports.signaler = async (req, res) => {
         // Mettre à jour l'état et la date de confirmation manager
         await navette.update({
             etat: "En attente de la confirmation des informations des employés par le manager",
+            last_update_by : req.user.id,
             date_envoie_paie: null
 
         });
@@ -1547,6 +1550,7 @@ exports.depart = async (req, res) => {
         await employer.update({
             date_depart: date_depart,
             type_depart: type_depart,
+            last_update_by : req.user.id,
         });
 
         res.send({

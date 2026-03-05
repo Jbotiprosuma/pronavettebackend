@@ -872,8 +872,8 @@ exports.rejectMutation = async (req, res) => {
             action: 'reject',
             target_id: result.id,
             target_label: `Mutation #${result.id} rejetée`,
-            description: `Mutation #${result.id} rejetée. Motif: ${req.body.rejet_motif || 'N/A'}.`,
-            new_values: { status: 'Rejeté', rejet_motif: req.body.rejet_motif },
+            description: `Mutation #${result.id} rejetée.`,
+            new_values: { status: 'Rejeté'},
         });
 
         res.status(200).json({
