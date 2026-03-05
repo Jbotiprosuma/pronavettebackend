@@ -1011,7 +1011,7 @@ exports.deleteEmployerPrime = async (req, res) => {
 
 exports.createEmployerPrimeNuit = async (req, res) => {
     try {
-        const { employer_id, navette_id, navette_ligne_id, nb_jour } = req.body;
+        const { employer_id, navette_id, navette_ligne_id, code_prime_nuit, nb_jour } = req.body;
 
         // Blocage mutation entrante en attente
         const mutBlock = await checkMutationInPending(navette_ligne_id);
@@ -1021,6 +1021,7 @@ exports.createEmployerPrimeNuit = async (req, res) => {
             employer_id,
             navette_id,
             navette_ligne_id,
+            code_prime_nuit: code_prime_nuit || 'CL12',
             nb_jour: nb_jour || 0,
             created_at: new Date(),
             updated_at: new Date(),
@@ -1058,7 +1059,7 @@ exports.createEmployerPrimeNuit = async (req, res) => {
 exports.updateEmployerPrimeNuit = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nb_jour } = req.body;
+        const { code_prime_nuit, nb_jour } = req.body;
 
         const primeNuit = await db.EmployerPrimeNuit.findByPk(id);
 
@@ -1066,9 +1067,10 @@ exports.updateEmployerPrimeNuit = async (req, res) => {
             return res.status(404).json({ message: 'Prime de nuit non trouvée.' });
         }
 
-        const oldPrimeNuitValues = { nb_jour: primeNuit.nb_jour };
+        const oldPrimeNuitValues = { code_prime_nuit: primeNuit.code_prime_nuit, nb_jour: primeNuit.nb_jour };
 
         await primeNuit.update({
+            code_prime_nuit: code_prime_nuit || primeNuit.code_prime_nuit,
             nb_jour: nb_jour || 0,
             updated_at: new Date(),
         });
@@ -1080,7 +1082,7 @@ exports.updateEmployerPrimeNuit = async (req, res) => {
             target_label: `Prime nuit #${primeNuit.id} - Employé #${primeNuit.employer_id}`,
             description: `Prime de nuit mise à jour.`,
             old_values: oldPrimeNuitValues,
-            new_values: { nb_jour },
+            new_values: { code_prime_nuit, nb_jour },
         });
 
         res.status(200).json({ message: 'Prime de nuit mise à jour avec succès.', data: primeNuit });
