@@ -218,10 +218,13 @@ exports.createMutation = async (req, res) => {
         // Les mutations via la navette (navette_id présent) restent autorisées
         if (!req.body.navette_id) {
             const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+
             const activeCampagne = await Campagne.findOne({
                 where: {
-                    mois: now.getMonth() + 1,
-                    annee: now.getFullYear(),
+                    mois: currentMonth,
+                    annee: currentYear,
                     status: 'active'
                 }
             });
@@ -229,6 +232,20 @@ exports.createMutation = async (req, res) => {
                 return res.status(403).json({
                     message: 'Création de mutation impossible : une campagne est en cours. Les mutations se font uniquement via la gestion de l\'état navette.'
                 });
+            }
+
+            // Si une campagne est terminée ce mois-ci, la mutation sera prise en compte le mois prochain
+            const terminatedCampagne = await Campagne.findOne({
+                where: {
+                    mois: currentMonth,
+                    annee: currentYear,
+                    status: 'terminee'
+                }
+            });
+            if (terminatedCampagne) {
+                // Forcer la période au mois suivant car la campagne du mois est déjà clôturée
+                const nextMonth = new Date(currentYear, currentMonth, 1); // mois suivant (JS month is 0-based, currentMonth is already +1)
+                req.body._forcedPeriodeAt = moment(nextMonth).format('YYYY-MM-DD');
             }
         }
 
@@ -355,7 +372,7 @@ exports.createMutation = async (req, res) => {
             service_new_id,
             navette_id,
             navette_ligne_id,
-            periode_at: periode_at ? periode_at + (periode_at.length === 7 ? '-01' : '') : null,
+            periode_at: req.body._forcedPeriodeAt || (periode_at ? periode_at + (periode_at.length === 7 ? '-01' : '') : null),
             depart_at: depart_at || null,
             arrivee_at: arrivee_at === '' ? null : arrivee_at,
             nb_jours_job: serverNbJoursJob,
@@ -717,6 +734,16 @@ exports.confirmMutation = async (req, res) => {
         // Vérification du statut pour éviter une double confirmation
         if (mutation.status === 'Validé' || mutation.is_confirme === 1) {
             return res.status(409).json({ message: 'Cette mutation est déjà confirmée/validée.' });
+        }
+
+        // Seul le NOUVEAU service (destinataire) peut valider la mutation, pas le service émetteur
+        const { service_id: userServiceId, is_admin, is_superadmin, is_paie } = req.user;
+        if (!is_admin && !is_superadmin && !is_paie) {
+            if (userServiceId !== mutation.service_new_id) {
+                return res.status(403).json({
+                    message: 'Seul le service destinataire (nouveau service) peut valider cette mutation.'
+                });
+            }
         }
 
         const updatedMutation = await mutation.update({
