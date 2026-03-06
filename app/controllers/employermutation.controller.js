@@ -13,6 +13,7 @@ const transporter = require('../config/mailer');
 const Notification = db.Notification;
 const EmployerHistory = db.EmployerHistory;
 const ActivityLog = db.ActivityLog;
+const Campagne = db.Campagne;
 const moment = require('moment');
 
 const getIncludes = () => {
@@ -212,6 +213,24 @@ exports.createMutation = async (req, res) => {
             nb_jours_job,
             nb_jour_abs
         } = req.body;
+
+        // Bloquer la création de mutation standalone si une campagne est active
+        // Les mutations via la navette (navette_id présent) restent autorisées
+        if (!req.body.navette_id) {
+            const now = new Date();
+            const activeCampagne = await Campagne.findOne({
+                where: {
+                    mois: now.getMonth() + 1,
+                    annee: now.getFullYear(),
+                    status: 'active'
+                }
+            });
+            if (activeCampagne) {
+                return res.status(403).json({
+                    message: 'Création de mutation impossible : une campagne est en cours. Les mutations se font uniquement via la gestion de l\'état navette.'
+                });
+            }
+        }
 
         const existingPendingMutation = await EmployerMutation.findOne({
             where: {
@@ -708,6 +727,16 @@ exports.confirmMutation = async (req, res) => {
             arrivee_at: mutation.arrivee_at ?? moment().startOf('day').toDate(),
             last_update_by: confirme_by,
         });
+
+        // Changement automatique du service de l'employé
+        try {
+            await Employer.update(
+                { service_id: mutation.service_new_id },
+                { where: { id: mutation.employer_id } }
+            );
+        } catch (svcErr) {
+            console.error('Erreur changement service employé après mutation:', svcErr);
+        }
 
         // Notification in-app : mutation confirmée
         try {

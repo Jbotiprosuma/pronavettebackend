@@ -298,6 +298,23 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: 'Non cadre'
     },
+    correction_flag: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    correction_comment: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    correction_date: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    correction_by: {
+      type: DataTypes.BIGINT,
+      allowNull: true
+    },
     deleted_at: {
       type: DataTypes.DATE,
       allowNull: true,

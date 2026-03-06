@@ -1308,12 +1308,34 @@ exports.signaler = async (req, res) => {
             });
         }
 
-        // Logique de validation :
-        // On ne peut valider que si l'état est 'En attente de l'enregistrement des informations des employés'
         if (navette.etat !== "En attente du traitement de l'etat navette par la paie") {
             return res.status(400).send({
                 message: `La navette n'est pas dans l'état correct pour la validation (état actuel: ${navette.etat}).`
             });
+        }
+
+        // Marquer les lignes sélectionnées avec leurs commentaires
+        const { lignes } = req.body; // [ { navette_ligne_id, comment } ]
+        if (lignes && Array.isArray(lignes) && lignes.length > 0) {
+            // D'abord remettre à zéro toutes les corrections de cette navette
+            await NavetteLigne.update(
+                { correction_flag: false, correction_comment: null, correction_date: null, correction_by: null },
+                { where: { navette_id: navetteId } }
+            );
+            // Marquer les lignes signalées
+            for (const ligne of lignes) {
+                if (ligne.navette_ligne_id) {
+                    await NavetteLigne.update(
+                        {
+                            correction_flag: true,
+                            correction_comment: typeof ligne.comment === 'string' ? ligne.comment.substring(0, 2000) : null,
+                            correction_date: new Date(),
+                            correction_by: req.user.id,
+                        },
+                        { where: { id: ligne.navette_ligne_id, navette_id: navetteId } }
+                    );
+                }
+            }
         }
 
         // Mettre à jour l'état et la date de confirmation manager
@@ -1331,7 +1353,6 @@ exports.signaler = async (req, res) => {
             }
         });
 
-        // 3. Envoyer l'e-mail à chaque membre de l'équipe de paie
         if (managers.length > 0) {
             for (const manager of managers) {
 
@@ -1357,9 +1378,10 @@ exports.signaler = async (req, res) => {
 
         // Notification : signalement paie
         try {
+            const nbLignes = (lignes && lignes.length) || 0;
             await Notification.notifyByService(navette.service_id, ['manager'], {
                 title: 'Signalement de la paie',
-                message: `La paie a signalé un problème sur la navette ${navette.code}.`,
+                message: `La paie a signalé ${nbLignes} ligne${nbLignes > 1 ? 's' : ''} à corriger sur la navette ${navette.code}.`,
                 type: 'navette_signalement',
                 link: `/navettes/${navette.id}`,
             });
@@ -1372,12 +1394,12 @@ exports.signaler = async (req, res) => {
             action: 'signaler',
             target_id: navette.id,
             target_label: `Navette ${navette.code}`,
-            description: `Signalement de la paie sur la navette ${navette.code}. Renvoyée au manager.`,
-            new_values: { etat: navette.etat },
+            description: `Signalement de la paie sur la navette ${navette.code}. ${(lignes && lignes.length) || 0} ligne(s) signalée(s). Renvoyée au manager.`,
+            new_values: { etat: navette.etat, lignes_signalees: lignes?.length || 0 },
         });
 
         res.send({
-            message: "Permission accordée avec succès par le manager !",
+            message: "Signalement envoyé avec succès !",
             navette: navette
         });
 
