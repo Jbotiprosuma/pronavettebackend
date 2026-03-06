@@ -6,7 +6,7 @@ const { authenticateToken, authorize } = require('../../middlewares/auth.middlew
 
 // 1. Lister tous les services
 // La route est maintenant relative à l'endroit où ce routeur sera 'monté' (ex: /api/services)
-router.get("/", authenticateToken, authorize(['system.config','user.manage','navette.edit']), controller.getAllServices);
+router.get("/", authenticateToken, authorize(['system.config','user.manage','navette.edit','employers.manage']), controller.getAllServices);
 
 // 2. Créer un nouveau service
 // Mettre les routes spécifiques avant les routes avec des paramètres
@@ -14,7 +14,7 @@ router.post("/", authenticateToken, authorize(['system.config','user.manage','na
 
 // 3. Récupérer un service par ID ou slug
 // L'ordre est important : /:identifier doit venir après les routes sans paramètres
-router.get("/:identifier", authenticateToken, authorize(['system.config','user.manage','navette.edit']), controller.getServiceByIdOrSlug);
+router.get("/:identifier", authenticateToken, authorize(['system.config','user.manage','navette.edit','employers.manage']), controller.getServiceByIdOrSlug);
 
 // 4. Mettre à jour un service
 router.put("/:identifier", authenticateToken, authorize(['system.config','user.manage','navette.edit']), controller.updateService);
