@@ -49,18 +49,16 @@ module.exports = {
         defaultValue: 0
       },
       type_prime: {
-        type: Sequelize.ENUM('PRIME CAISSE',
+        type: Sequelize.ENUM(
+          'PRIME CAISSE',
           'PRIME IMPOSABLE',
           'PRIME ASTREINTE',
           'PRIME DE FRAIS',
           'PRIME TENUE',
           'PRIME INVENTAIRE',
           'PRIME DE PANIER',
-          'PRIME DE TRANSPORT',
-          'PRIME DE FIN D ANNEE',
-          'PRIME FIXE IMPOSABLE',
-          'PRIME FIXE NON IMPOSABLE',
-          'PRIME DIVERS'),
+          'PRIME DE TRANSPORT DE NUIT',
+        ),
         allowNull: false
       },
       deleted_at: {

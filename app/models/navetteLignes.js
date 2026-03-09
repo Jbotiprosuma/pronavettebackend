@@ -50,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
       if (navetteLigne) {
         const absenceTypesReduisantNbJours = [
           'ABSENCE_NON_REMUNEREE',
-          'ABSENCE_MISE_À_PIEDS',
+          'ABSENCE_MISE_A_PIEDS',
           'ABSENCE_CONGES_DE_MATERNITE',
           'ABSENCE_CONGES_PAYE',
           'ACCIDENT_DE_TRAVAIL'
