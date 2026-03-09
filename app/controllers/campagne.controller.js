@@ -606,41 +606,23 @@ exports.extend = async (req, res) => {
         if (!campagne) return res.status(404).json({ message: 'Campagne introuvable.' });
         if (!campagne.is_executed) return res.status(400).json({ message: 'Seules les campagnes exécutées peuvent être prolongées.' });
 
-        const periode_at = new Date(campagne.annee, campagne.mois - 1, 1);
-
-        // Vérifier si des saisies existent
-        const navettesCheck = await Navette.findAll({ where: { periode_at } });
-        const navetteIdsCheck = navettesCheck.map(n => n.id);
-        if (navetteIdsCheck.length > 0) {
-            const ligneIds = await NavetteLigne.findAll({
-                where: { navette_id: { [Op.in]: navetteIdsCheck } },
-                attributes: ['id'], raw: true,
-            }).then(r => r.map(l => l.id));
-
-            const [absCount, acompteCount, heureCount, primeCount, primeNuitCount] = await Promise.all([
-                EmployerAb.count({ where: { navette_id: { [Op.in]: navetteIdsCheck } } }),
-                EmployerAccompte.count({ where: { navette_id: { [Op.in]: navetteIdsCheck } } }),
-                ligneIds.length > 0 ? EmployerHeure.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-                ligneIds.length > 0 ? EmployerPrime.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-                ligneIds.length > 0 ? EmployerPrimeNuit.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-            ]);
-            const totalSaisies = absCount + acompteCount + heureCount + primeCount + primeNuitCount;
-
-            if (totalSaisies > 0) {
-                return res.status(400).json({
-                    message: `Impossible de modifier les dates. Des saisies ont déjà été effectuées (${totalSaisies} saisie(s)). Veuillez d'abord annuler les saisies concernées.`,
-                });
-            }
-        }
-
         const nouvelleFin = new Date(nouvelle_date_fin);
 
-        // Vérifier que la nouvelle date est postérieure
+        // Vérifier que la nouvelle date est postérieure à l'ancienne
         if (campagne.periode_fin_at && nouvelleFin <= new Date(campagne.periode_fin_at)) {
             return res.status(400).json({
-                message: `La nouvelle date de fin doit être postérieure à ${new Date(campagne.periode_fin_at).toLocaleDateString('fr-FR')}.`
+                message: `La nouvelle date de fin (${nouvelleFin.toLocaleDateString('fr-FR')}) doit être postérieure à la date actuelle (${new Date(campagne.periode_fin_at).toLocaleDateString('fr-FR')}).`
             });
         }
+
+        // Vérifier que la nouvelle date est dans le même mois que la campagne
+        if (nouvelleFin.getMonth() + 1 !== campagne.mois || nouvelleFin.getFullYear() !== campagne.annee) {
+            return res.status(400).json({
+                message: `La prolongation doit rester dans le mois de la campagne (${MOIS_NOMS[campagne.mois - 1]} ${campagne.annee}).`
+            });
+        }
+
+        const periode_at = new Date(campagne.annee, campagne.mois - 1, 1);
 
         // Mettre à jour les navettes
         await Navette.update(
@@ -706,28 +688,14 @@ exports.updateDates = async (req, res) => {
             return res.status(400).json({ message: 'Cette campagne est terminée et ne peut plus être modifiée.' });
         }
 
-        // Vérifier si des saisies existent
-        const navetteIds = navettes.map(n => n.id);
-        if (navetteIds.length > 0) {
-            const ligneIds = await NavetteLigne.findAll({
-                where: { navette_id: { [Op.in]: navetteIds } },
-                attributes: ['id'], raw: true,
-            }).then(r => r.map(l => l.id));
-
-            const [absCount, acompteCount, heureCount, primeCount, primeNuitCount] = await Promise.all([
-                EmployerAb.count({ where: { navette_id: { [Op.in]: navetteIds } } }),
-                EmployerAccompte.count({ where: { navette_id: { [Op.in]: navetteIds } } }),
-                ligneIds.length > 0 ? EmployerHeure.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-                ligneIds.length > 0 ? EmployerPrime.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-                ligneIds.length > 0 ? EmployerPrimeNuit.count({ where: { navette_ligne_id: { [Op.in]: ligneIds } } }) : 0,
-            ]);
-            const totalSaisies = absCount + acompteCount + heureCount + primeCount + primeNuitCount;
-
-            if (totalSaisies > 0) {
-                return res.status(400).json({
-                    message: `Impossible de modifier les dates. Des saisies ont déjà été effectuées (${totalSaisies} saisie(s)). Veuillez d'abord annuler les saisies concernées.`,
-                });
-            }
+        // Bloquer la MODIFICATION si au moins un service a déjà fait avancer son état navette
+        // (statut différent de "En attente" = le service a interagi avec sa navette)
+        const hasStartedNavette = navettes.some(n => n.status !== 'En attente');
+        if (hasStartedNavette) {
+            const nbStarted = navettes.filter(n => n.status !== 'En attente').length;
+            return res.status(400).json({
+                message: `Impossible de modifier les deux dates. ${nbStarted} service(s) ont déjà commencé à saisir leur état navette. Utilisez la prolongation pour modifier uniquement la date de fin.`,
+            });
         }
 
         // Construire les champs à mettre à jour
