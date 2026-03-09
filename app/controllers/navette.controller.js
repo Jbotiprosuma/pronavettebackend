@@ -1779,91 +1779,74 @@ exports.exportSage = async (req, res) => {
             'INDEMNITE DEPART CDD NON IMPOSABLE': '3162'
         };
 
-        // Parcourir les lignes navette triées par matricule
-        const sortedLines = [...navette.navetteLignes].sort((a, b) => {
-            if (!a.employer || !b.employer) return 0;
-            return (a.employer.matricule || '').localeCompare(b.employer.matricule || '');
-        });
+        // FIX #2 : Exclure les employés mutés sortants (mutation_out = 1) —
+        // leur données ont été reprises par le service d'accueil.
+        // Trier par matricule.
+        const sortedLines = [...navette.navetteLignes]
+            .filter(l => l.mutation_out !== 1)
+            .sort((a, b) => {
+                if (!a.employer || !b.employer) return 0;
+                return (a.employer.matricule || '').localeCompare(b.employer.matricule || '');
+            });
+
+        // FIX #1 : Agréger les valeurs par (matricule, code) pour éviter les
+        // doublons dans l'export Sage (même code deux fois → rejet ou données fausses).
+        // Les codes primesNuit ont la priorité sur les primes monétaires quand
+        // le même code apparaît dans les deux sections (ex. CL06 / CL22).
+        // Map : matricule -> Map<code, valeur>
+        const exportMap = new Map();
+
+        const addExportRow = (matricule, code, valeur) => {
+            if (!code || valeur == null || Number(valeur) === 0) return;
+            if (!exportMap.has(matricule)) exportMap.set(matricule, new Map());
+            const empMap = exportMap.get(matricule);
+            empMap.set(code, (empMap.get(code) || 0) + Number(valeur));
+        };
 
         for (const ligne of sortedLines) {
             const emp = ligne.employer;
             if (!emp) continue;
             const matricule = emp.matricule;
 
+            // Codes déjà couverts par primesNuit (ex. CL12 + companions CL06/CL22)
+            // → ces codes ne seront pas ajoutés depuis la section primes monétaires.
+            const primeNuitCodes = new Set(
+                (ligne.primesNuit || []).map(pn => pn.code_prime_nuit).filter(Boolean)
+            );
+
             // --- Absences ---
-            if (ligne.absences && ligne.absences.length > 0) {
-                for (const abs of ligne.absences) {
-                    const code = abs.code_abs || CODE_ABSENCE[abs.type_abs] || '??';
-                    ws.addRow({
-                        matricule,
-                        element: 255,
-                        code,
-                        valeur: abs.nb_jours
-                    });
-                }
+            for (const abs of (ligne.absences || [])) {
+                const code = abs.code_abs || CODE_ABSENCE[abs.type_abs];
+                addExportRow(matricule, code, abs.nb_jours);
             }
 
             // --- Acomptes ---
-            if (ligne.acomptes && ligne.acomptes.length > 0) {
-                for (const acc of ligne.acomptes) {
-                    ws.addRow({
-                        matricule,
-                        element: 255,
-                        code: acc.code_accompte || 'CL30',
-                        valeur: acc.somme
-                    });
-                }
+            for (const acc of (ligne.acomptes || [])) {
+                addExportRow(matricule, acc.code_accompte || 'CL30', acc.somme);
             }
 
-            // --- Heures supplémentaires (valeurs agrégées après distribution) ---
-            if (ligne.heure_sup_15 > 0) {
-                ws.addRow({
-                    matricule,
-                    element: 255,
-                    code: 'HS01',
-                    valeur: ligne.heure_sup_15
-                });
-            }
-            if (ligne.heure_sup_50 > 0) {
-                ws.addRow({
-                    matricule,
-                    element: 255,
-                    code: 'HS02',
-                    valeur: ligne.heure_sup_50
-                });
-            }
-            if (ligne.heure_sup_75 > 0) {
-                ws.addRow({
-                    matricule,
-                    element: 255,
-                    code: 'HS03',
-                    valeur: ligne.heure_sup_75
-                });
+            // --- Heures supplémentaires (valeurs agrégées sur la ligne) ---
+            addExportRow(matricule, 'HS01', ligne.heure_sup_15);
+            addExportRow(matricule, 'HS02', ligne.heure_sup_50);
+            addExportRow(matricule, 'HS03', ligne.heure_sup_75);
+
+            // --- Primes de nuit (CL12 + companions CL06/CL22 auto-générés) ---
+            for (const pn of (ligne.primesNuit || [])) {
+                addExportRow(matricule, pn.code_prime_nuit || 'CL12', pn.nb_jour);
             }
 
-            // --- Primes ---
-            if (ligne.primes && ligne.primes.length > 0) {
-                for (const p of ligne.primes) {
-                    const code = p.code_prime || PRIME_CODE_MAP[p.type_prime] || '??';
-                    ws.addRow({
-                        matricule,
-                        element: 255,
-                        code,
-                        valeur: p.montant
-                    });
-                }
+            // --- Primes monétaires (on ignore les codes déjà dans primesNuit) ---
+            for (const p of (ligne.primes || [])) {
+                const code = PRIME_CODE_MAP[p.type_prime];
+                if (!code || primeNuitCodes.has(code)) continue;
+                addExportRow(matricule, code, p.montant);
             }
+        }
 
-            // --- Primes de nuit ---
-            if (ligne.primesNuit && ligne.primesNuit.length > 0) {
-                for (const pn of ligne.primesNuit) {
-                    ws.addRow({
-                        matricule,
-                        element: 255,
-                        code: pn.code_prime_nuit || 'CL12',
-                        valeur: pn.nb_jour
-                    });
-                }
+        // Écriture des lignes depuis la map agrégée
+        for (const [matricule, codeMap] of exportMap) {
+            for (const [code, valeur] of codeMap) {
+                ws.addRow({ matricule, element: 255, code, valeur });
             }
         }
 
