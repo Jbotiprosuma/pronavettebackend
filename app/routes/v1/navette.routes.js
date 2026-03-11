@@ -15,9 +15,9 @@ router.get("/service", authenticateToken, authorize(['system.config','navette.ed
 
 router.put("/:id/validate-updates", authenticateToken, authorize(['system.config', 'navette.edit']), controller.validateUpdates); 
 router.put("/:id/correction", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit','navette.edit']), controller.correction); 
-router.put("/:id/signaler", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit','navette.edit']), controller.signaler); 
+router.put("/:id/signaler", authenticateToken, authorize(['system.config', 'navette.manage']), controller.signaler); 
 router.put("/:id/send-to-payroll", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit','navette.edit']), controller.sendToPayroll);    
-router.put("/:id/close", authenticateToken, authorize(['system.config', 'navette.read', 'mutation.edit','navette.edit']), controller.closeNavette); 
+router.put("/:id/close", authenticateToken, authorize(['system.config', 'navette.manage']), controller.closeNavette); 
 
 // --- Nouvelles routes pour EmployerAb (déjà présentes dans votre contrôleur) ---
 // Vous pourriez vouloir ajuster les permissions selon qui peut créer/modifier/supprimer des absences

@@ -1299,6 +1299,11 @@ exports.correction = async (req, res) => {
 exports.signaler = async (req, res) => {
     const navetteId = req.params.id;
 
+    // Seule la paie (ou admin/superadmin) peut signaler
+    if (!req.user.is_paie && !req.user.is_admin && req.user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Seule la paie peut signaler des corrections." });
+    }
+
     try {
         const navette = await Navette.findByPk(navetteId);
 
@@ -1316,13 +1321,22 @@ exports.signaler = async (req, res) => {
 
         // Marquer les lignes sélectionnées avec leurs commentaires
         const { lignes } = req.body; // [ { navette_ligne_id, comment } ]
-        if (lignes && Array.isArray(lignes) && lignes.length > 0) {
-            // D'abord remettre à zéro toutes les corrections de cette navette
-            await NavetteLigne.update(
-                { correction_flag: false, correction_comment: null, correction_date: null, correction_by: null },
-                { where: { navette_id: navetteId } }
-            );
-            // Marquer les lignes signalées
+        if (!lignes || !Array.isArray(lignes) || lignes.length === 0) {
+            return res.status(400).json({ message: "Veuillez sélectionner au moins une ligne à signaler." });
+        }
+
+        // Vérifier que chaque ligne a un commentaire
+        const hasEmptyComments = lignes.some(l => !l.comment || !String(l.comment).trim());
+        if (hasEmptyComments) {
+            return res.status(400).json({ message: "Chaque ligne signalée doit avoir un commentaire." });
+        }
+
+        // D'abord remettre à zéro toutes les corrections de cette navette
+        await NavetteLigne.update(
+            { correction_flag: false, correction_comment: null, correction_date: null, correction_by: null },
+            { where: { navette_id: navetteId } }
+        );
+        // Marquer les lignes signalées
             for (const ligne of lignes) {
                 if (ligne.navette_ligne_id) {
                     await NavetteLigne.update(
@@ -1336,7 +1350,6 @@ exports.signaler = async (req, res) => {
                     );
                 }
             }
-        }
 
         // Mettre à jour l'état et la date de confirmation manager
         await navette.update({
@@ -1501,6 +1514,11 @@ exports.sendToPayroll = async (req, res) => {
 
 exports.closeNavette = async (req, res) => {
     const navetteId = req.params.id; // L'ID de la navette à clôturer
+
+    // Seule la paie (ou admin/superadmin) peut clôturer
+    if (!req.user.is_paie && !req.user.is_admin && req.user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Seule la paie peut clôturer une navette." });
+    }
 
     try {
         const navette = await Navette.findByPk(navetteId);
