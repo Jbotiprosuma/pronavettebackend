@@ -1450,7 +1450,7 @@ exports.sendToPayroll = async (req, res) => {
         });
 
         // Sauvegarder les commentaires de réponse optionnels sur les lignes corrigées
-        const { lignes_responses } = req.body; // [ { navette_ligne_id, response } ]
+        const { lignes_responses } = req.body || {}; // [ { navette_ligne_id, response } ]
         if (lignes_responses && Array.isArray(lignes_responses)) {
             for (const lr of lignes_responses) {
                 if (lr.navette_ligne_id && lr.response && String(lr.response).trim()) {
