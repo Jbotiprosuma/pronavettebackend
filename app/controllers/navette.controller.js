@@ -12,7 +12,7 @@ const EmployerPrime = db.EmployerPrime;
 const EmployerPrimeNuit = db.EmployerPrimeNuit;
 const { Op, where } = require('sequelize');
 const multer = require('multer'); // Assurez-vous que multer est configuré si vous l'utilisez pour les images.
-const { sendNavetteValidatedEmail, sendCorrectionRequestEmail, sendToPayrollEmail, sendCampagneLaunchedEmail, sendCampagneReminderEmail } = require('../services/email.service');
+const { sendNavetteValidatedEmail, sendCorrectionRequestEmail, sendToPayrollEmail, sendCampagneLaunchedEmail, sendCampagneReminderEmail, sendCorrectionResponseEmail } = require('../services/email.service');
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
@@ -1333,8 +1333,8 @@ exports.signaler = async (req, res) => {
 
         // D'abord remettre à zéro toutes les corrections de cette navette
         await NavetteLigne.update(
-            { correction_flag: false, correction_comment: null, correction_date: null, correction_by: null },
-            { where: { navette_id: navetteId } }
+            { correction_flag: false, correction_comment: null, correction_date: null, correction_by: null, correction_status: null, correction_response: null, correction_resolved_by: null, correction_resolved_date: null },
+            { where: { navette_id: navetteId }, hooks: false, silent: true }
         );
         // Marquer les lignes signalées
             for (const ligne of lignes) {
@@ -1342,11 +1342,12 @@ exports.signaler = async (req, res) => {
                     await NavetteLigne.update(
                         {
                             correction_flag: true,
+                            correction_status: 'signaled',
                             correction_comment: typeof ligne.comment === 'string' ? ligne.comment.substring(0, 2000) : null,
                             correction_date: new Date(),
                             correction_by: req.user.id,
                         },
-                        { where: { id: ligne.navette_ligne_id, navette_id: navetteId } }
+                        { where: { id: ligne.navette_ligne_id, navette_id: navetteId }, hooks: false, silent: true }
                     );
                 }
             }
@@ -1448,6 +1449,19 @@ exports.sendToPayroll = async (req, res) => {
             date_envoie_paie: new Date()
         });
 
+        // Sauvegarder les commentaires de réponse optionnels sur les lignes corrigées
+        const { lignes_responses } = req.body; // [ { navette_ligne_id, response } ]
+        if (lignes_responses && Array.isArray(lignes_responses)) {
+            for (const lr of lignes_responses) {
+                if (lr.navette_ligne_id && lr.response && String(lr.response).trim()) {
+                    await NavetteLigne.update(
+                        { correction_response: String(lr.response).substring(0, 2000) },
+                        { where: { id: lr.navette_ligne_id, navette_id: navetteId, correction_flag: true }, hooks: false, silent: true }
+                    );
+                }
+            }
+        }
+
         const paies = await User.findAll({
             where: {
                 service_id: navette.service_id,
@@ -1472,7 +1486,13 @@ exports.sendToPayroll = async (req, res) => {
 
                 const name = `${greeting} ${setGenre} ${paie.prenom} ${paie.nom}`;
                 try {
-                    await sendToPayrollEmail(paie.mail, name, navette.code);
+                    // Compter les corrections pour enrichir l'email
+                    const nbCorrected = await NavetteLigne.count({ where: { navette_id: navetteId, correction_status: 'corrected' } });
+                    if (nbCorrected > 0) {
+                        await sendCorrectionResponseEmail(paie.mail, name, navette.code, nbCorrected);
+                    } else {
+                        await sendToPayrollEmail(paie.mail, name, navette.code);
+                    }
                 } catch (error) {
 
                 }
@@ -1509,6 +1529,126 @@ exports.sendToPayroll = async (req, res) => {
         res.status(500).send({
             message: `Erreur lors de l'envoi de la navette à la paie avec l'id=${navetteId}.` + error.message
         });
+    }
+};
+
+exports.validateCorrections = async (req, res) => {
+    const navetteId = req.params.id;
+
+    if (!req.user.is_paie && !req.user.is_admin && req.user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Seule la paie peut valider ou rejeter les corrections." });
+    }
+
+    try {
+        const navette = await Navette.findByPk(navetteId);
+        if (!navette) {
+            return res.status(404).json({ message: `Navette introuvable (id=${navetteId}).` });
+        }
+
+        if (navette.etat !== "En attente du traitement de l'etat navette par la paie") {
+            return res.status(400).json({ message: `La navette n'est pas dans l'état correct (état actuel: ${navette.etat}).` });
+        }
+
+        const { validations, rejections } = req.body;
+        // validations: [ navette_ligne_id, ... ]
+        // rejections: [ { navette_ligne_id, comment }, ... ]
+
+        if ((!validations || validations.length === 0) && (!rejections || rejections.length === 0)) {
+            return res.status(400).json({ message: "Veuillez valider ou rejeter au moins une correction." });
+        }
+
+        // Valider les corrections approuvées
+        if (validations && Array.isArray(validations)) {
+            for (const ligneId of validations) {
+                await NavetteLigne.update(
+                    { correction_status: 'validated' },
+                    { where: { id: ligneId, navette_id: navetteId, correction_flag: true }, hooks: false, silent: true }
+                );
+            }
+        }
+
+        // Rejeter les corrections non conformes
+        let hasRejections = false;
+        if (rejections && Array.isArray(rejections) && rejections.length > 0) {
+            const hasEmptyComments = rejections.some(r => !r.comment || !String(r.comment).trim());
+            if (hasEmptyComments) {
+                return res.status(400).json({ message: "Chaque ligne rejetée doit avoir un commentaire." });
+            }
+            hasRejections = true;
+            for (const rej of rejections) {
+                await NavetteLigne.update(
+                    {
+                        correction_status: 'rejected',
+                        correction_comment: String(rej.comment).substring(0, 2000),
+                        correction_response: null,
+                        correction_resolved_by: null,
+                        correction_resolved_date: null,
+                        correction_date: new Date(),
+                        correction_by: req.user.id,
+                    },
+                    { where: { id: rej.navette_ligne_id, navette_id: navetteId, correction_flag: true }, hooks: false, silent: true }
+                );
+            }
+        }
+
+        // Si des rejections existent, renvoyer au manager pour correction
+        if (hasRejections) {
+            await navette.update({
+                etat: "En attente de la confirmation des informations des employés par le manager",
+                last_update_by: req.user.id,
+                date_envoie_paie: null
+            });
+
+            // Reset les rejetées : correction_status = 'signaled' pour le nouveau cycle
+            for (const rej of rejections) {
+                await NavetteLigne.update(
+                    { correction_status: 'signaled' },
+                    { where: { id: rej.navette_ligne_id, navette_id: navetteId }, hooks: false, silent: true }
+                );
+            }
+
+            // Email + notification aux managers
+            const managers = await User.findAll({
+                where: { service_id: navette.service_id, is_manager: true }
+            });
+            for (const manager of managers) {
+                const setGenre = manager.genre === "Homme" ? "monsieur" : "madame";
+                const hour = new Date().getHours();
+                const greeting = (hour >= 5 && hour < 18) ? "Bonjour" : "Bonsoir";
+                const name = `${greeting} ${setGenre} ${manager.prenom} ${manager.nom}`;
+                try { await sendCorrectionRequestEmail(manager.mail, name, navette.code); } catch (e) {}
+            }
+
+            try {
+                await Notification.notifyByService(navette.service_id, ['manager'], {
+                    title: 'Corrections rejetées par la paie',
+                    message: `La paie a rejeté ${rejections.length} correction${rejections.length > 1 ? 's' : ''} sur la navette ${navette.code}. De nouvelles modifications sont requises.`,
+                    type: 'navette_signalement',
+                    link: `/navettes/${navette.id}`,
+                });
+            } catch (notifErr) {
+                console.error('Erreur envoi notification correction_rejetee:', notifErr);
+            }
+        }
+
+        await ActivityLog.log(req, {
+            module: 'navette',
+            action: 'validate_corrections',
+            target_id: navette.id,
+            target_label: `Navette ${navette.code}`,
+            description: `Validation des corrections navette ${navette.code}: ${(validations || []).length} validée(s), ${(rejections || []).length} rejetée(s).`,
+            new_values: { validations_count: (validations || []).length, rejections_count: (rejections || []).length },
+        });
+
+        res.json({
+            message: hasRejections
+                ? `Corrections traitées. ${(rejections || []).length} rejet(s) renvoyé(s) au service.`
+                : `Toutes les corrections ont été validées.`,
+            navette
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: `Erreur lors de la validation des corrections: ${error.message}` });
     }
 };
 

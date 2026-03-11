@@ -250,6 +250,27 @@ const sendCampagneReminderEmail = async (recipientEmails, details) => {
     }
 };
 
+const sendCorrectionResponseEmail = async (payrollEmail, name, navetteCode, nbCorrected) => {
+    const emailContent = `
+        <p>${name},</p>
+        <p>Le service a effectué <strong>${nbCorrected} correction(s)</strong> sur la navette <strong>${navetteCode}</strong>.</p>
+        <p>Veuillez vous connecter pour examiner et valider les corrections apportées.</p>
+        <div style="display:flex;justify-content:center;align-items:center;width:100%;" ><a style="padding:20px;text-decoration:none;" href="http://pronavette">Se connecter</a></div>
+        <p>Cordialement,</p>
+        <p>L'équipe support de <strong>PRONAVETTE</strong>.</p>
+    `;
+    try {
+        await transporter.sendMail({
+            from: `PRONAVETTE <${process.env.EMAIL_FROM}>`,
+            to: payrollEmail,
+            subject: `Corrections apportées sur la navette #${navetteCode}`,
+            html: emailContent,
+        });
+    } catch (error) {
+        console.error(`Erreur envoi email correction response:`, error);
+    }
+};
+
 module.exports = {
     sendAccountCreationEmail,
     sendNavetteValidatedEmail,
@@ -258,4 +279,5 @@ module.exports = {
     sendMutationNotification,
     sendCampagneLaunchedEmail,
     sendCampagneReminderEmail,
+    sendCorrectionResponseEmail,
 };

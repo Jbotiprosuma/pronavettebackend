@@ -315,6 +315,23 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BIGINT,
       allowNull: true
     },
+    correction_status: {
+      type: DataTypes.ENUM('signaled', 'corrected', 'validated', 'rejected'),
+      allowNull: true,
+      defaultValue: null
+    },
+    correction_response: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    correction_resolved_by: {
+      type: DataTypes.BIGINT,
+      allowNull: true
+    },
+    correction_resolved_date: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     deleted_at: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -366,6 +383,16 @@ module.exports = (sequelize, DataTypes) => {
             note: `Changements : ${modifications}`,
             created_at: new Date()
           });
+        }
+
+        // Auto-tracking correction workflow
+        const dataFields = ['nb_jours', 'nb_jour_abs', 'nb_jour_abs_reduit', 'nb_jour_abs_non_reduit', 'accompte', 'prime_nuit', 'heure_sup_15', 'heure_sup_50', 'heure_sup_75'];
+        const hasDataChange = changed.some(field => dataFields.includes(field));
+        if (hasDataChange && navetteLigne.correction_status === 'signaled') {
+          await NavetteLigne.update(
+            { correction_status: 'corrected', correction_resolved_date: new Date(), correction_resolved_by: navetteLigne.last_update_by || null },
+            { where: { id: navetteLigne.id }, hooks: false, silent: true }
+          );
         }
 
         // Appel logique métier existante (toujours exécuté)

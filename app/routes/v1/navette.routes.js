@@ -16,6 +16,7 @@ router.get("/service", authenticateToken, authorize(['system.config','navette.ed
 router.put("/:id/validate-updates", authenticateToken, authorize(['system.config', 'navette.edit']), controller.validateUpdates); 
 router.put("/:id/correction", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit','navette.edit']), controller.correction); 
 router.put("/:id/signaler", authenticateToken, authorize(['system.config', 'navette.manage']), controller.signaler); 
+router.put("/:id/validate-corrections", authenticateToken, authorize(['system.config', 'navette.manage']), controller.validateCorrections); 
 router.put("/:id/send-to-payroll", authenticateToken, authorize(['system.config', 'navette.manage', 'mutation.edit','navette.edit']), controller.sendToPayroll);    
 router.put("/:id/close", authenticateToken, authorize(['system.config', 'navette.manage']), controller.closeNavette); 
 
